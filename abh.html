@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mindfulness Mood Tracker with Firebase</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap');
+
+  :root {
+    --color-verysad: #d32f2f;
+    --color-sad: #f44336;
+    --color-anxious: #ff7043;
+    --color-angry: #e64a19;
+    --color-neutral: #757575;
+    --color-calm: #26a69a;
+    --color-happy: #4caf50;
+    --color-excited: #fbc02d;
+    --color-veryhappy: #fdd835;
+
+    --color-peace: #81c784;
+    --color-respect: #42a5f5;
+    --color-trust: #64b5f6;
+    --color-unity: #ffb74d;
+    --color-love: #f06292;
+    --color-pride: #ab47bc;
+    --color-rule: #ff7043;
+    --color-usurp: #e53935;
+    --color-tempt: #fdd835;
+    --color-lust: #e91e63;
+    --color-protect: #4db6ac;
+
+    /* Background gradient with peach-pink to lavender-purple */
+    --background-gradient: linear-gradient(135deg, #f8cdd4, #dcd2f7);
+
+    /* Reduced opacity radial gradient pattern for subtle effect */
+    --background-pattern: radial-gradient(circle at top left, rgba(255,255,255,0.05) 10%, transparent 11%), 
+                         radial-gradient(circle at bottom right, rgba(255,255,255,0.05) 10%, transparent 11%);
+    --text-color: #222;
+    --container-bg: rgba(255 255 255 / 0.9);
+    --shadow-color: rgba(74, 144, 226, 0.25);
+    --advice-bg: #e3f2fd;
+    --chart-bar-bg: #90caf9;
+
+    /* Sidebar colors for app */
+    --sidebar-bg: #dcd2f7;
+    --sidebar-text: #0d47a1;
+    --sidebar-hover-bg: #b2a4f9;
+    --sidebar-selected-bg: #8779f7;
+
+    /* Dark theme */
+    --dark-bg: #121212;
+    --dark-text: #e0e0e0;
+    --dark-container-bg: rgba(40,40,40,0.95);
+    --dark-sidebar-bg: #362f52;
+    --dark-sidebar-text: #dfdbff;
+    --dark-sidebar-hover-bg: #5c54a4;
+    --dark-sidebar-selected-bg: #8779f7;
+  }
+
+  html, body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: var(--background-gradient), var(--background-pattern);
+    color: var(--text-color);
+    height: 100%;
+    user-select: none;
+  }
+
+  body.dark {
+    background: var(--dark-bg);
+    color: var(--dark-text);
+  }
+
+  #app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Sidebar styles */
+  #sidebar {
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    width: 240px;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    padding: 30px 20px;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  }
+  body.dark #sidebar {
+    background: var(--dark-sidebar-bg);
+    color: var(--dark-sidebar-text);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.7);
+  }
+  #sidebar h2 {
+    font-weight: 700;
+    font-size: 1.6rem;
+    margin-bottom: 24px;
+    user-select: text;
+    text-align: center;
+  }
+  #sidebar nav {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-grow: 1;
+  }
+  #sidebar nav button {
+    background: transparent;
+    border: none;
+    color: inherit;
+    text-align: left;
+    font-size: 1.1rem;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    outline-offset: 4px;
+  }
+  #sidebar nav button:hover,
+  #sidebar nav button:focus {
+    background: var(--sidebar-hover-bg);
+    color: white;
+    outline: none;
+  }
+  #sidebar nav button.selected {
+    background: var(--sidebar-selected-bg);
+    color: white;
+    font-weight: 600;
+  }
+  body.dark #sidebar nav button:hover,
+  body.dark #sidebar nav button:focus {
+    background: var(--dark-sidebar-hover-bg);
+    color: white;
+  }
+  body.dark #sidebar nav button.selected {
+    background: var(--dark-sidebar-selected-bg);
+    color: white;
+    font-weight: 600;
+  }
+
+  /* Sidebar user info */
+  #user-info {
+    padding: 15px 0 0;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--sidebar-text);
+    user-select: text;
+  }
+  body.dark #user-info {
+    color: var(--dark-sidebar-text);
+    border-top-color: rgba(255,255,255,0.15);
+  }
+
+  /* Content area */
+  #content {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background: var(--container-bg);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+  }
+  body.dark #content {
+    background: var(--dark-container-bg);
+    color: var(--dark-text);
+  }
+
+  /* Login Page */
+  #login-page {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--background-gradient);
+  }
+  body.dark #login-page {
+    background: var(--dark-bg);
+  }
+  #login-form {
+    background: var(--container-bg);
+    padding: 30px 40px;
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgba(21, 101, 192, 0.25);
+    width: 320px;
+    box-sizing: border-box;
+    user-select: none;
+  }
+  #login-form h2 {
+    margin: 0 0 24px 0;
+    font-weight: 700;
+    text-align: center;
+    color: #1565c0;
+    user-select: text;
+  }
+  #login-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  #login-form input[type="email"],
+  #login-form input[type="password"] {
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1.5px solid #64b5f6;
+    font-size: 1rem;
+    box-sizing: border-box;
+    outline-offset: 2px;
+  }
+  #login-form input[type="email"]:focus,
+  #login-form input[type="password"]:focus {
+    border-color: #0d47a1;
+  }
+  #login-form label.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 400;
+    font-size: 0.9rem;
+    color: #0d47a1;
+  }
+  #login-form button {
+    width: 100%;
+    background: #1565c0;
+    border: none;
+    padding: 12px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    user-select: none;
+  }
+  #login-form button:hover {
+    background: #0d37a1;
+  }
+  #login-form .links {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 0.9rem;
+  }
+  #login-form .links a {
+    color: #1565c0;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  #login-form .links a:hover {
+    text-decoration: underline;
+  }
+  #login-error {
+    color: #d32f2f;
+    font-weight: 700;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+
+  /* App dashboard layout as grid inside #dashboard-section */
+  #dashboard-section {
+    display: grid;
+    grid-template-columns: 1.2fr 2.3fr 1.2fr;
+    gap: 28px;
+    width: 100%;
+  }
+
+  /* Left Advice Section */
+  .advice-section {
+    background: var(--container-bg);
+    padding: 20px 25px;
+    border-radius: 20px;
+    box-shadow: 0 15px 40px var(--shadow-color);
+    font-style: italic;
+    font-size: 1.15rem;
+    color: #0d47a1;
+    overflow-y: auto;
+    min-height: 300px;
+    user-select: text;
+    line-height: 1.5;
+    text-align: left;
+  }
+  .advice-section h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    color: #1565c0;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+  }
+
+  /* Middle Mood Selection + Daily Trend */
+  .mood-center {
+    background: var(--container-bg);
+    padding: 30px 35px 45px;
+    border-radius: 20px;
+    box-shadow: 0 15px 40px var(--shadow-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .mood-center .section-title {
+    font-weight: 700;
+    color: #1565c0;
+    margin-bottom: 18px;
+    font-size: 1.6rem;
+    letter-spacing: 1.8px;
+    user-select: none;
+    text-transform: uppercase;
+    text-align: center;
+    width: 100%;
+  }
+  .mood-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px 18px;
+    margin-bottom: 28px;
+    max-width: 700px;
+    user-select: none;
+  }
+  .mood-btn {
+    border: none;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 2.2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.4s cubic-bezier(0.4,0,0.2,1), background-color 0.3s ease;
+    position: relative;
+    user-select: none;
+    color: white;
+    background-color: var(--color-neutral);
+  }
+  .mood-btn:hover, .mood-btn:focus {
+    outline: none;
+    transform: scale(1.3);
+    box-shadow:
+      0 12px 22px rgba(0,0,0,0.25),
+      0 0 8px 3px rgba(255 255 255 / 0.8),
+      inset 0 0 14px rgba(255 255 255 / 0.3);
+    z-index: 10;
+  }
+  .mood-btn.selected {
+    box-shadow:
+      0 0 22px 6px rgba(255 255 255 / 0.85),
+      0 0 36px 20px rgba(0 51 153 / 0.6),
+      inset 0 0 22px 6px rgba(255 255 255 / 0.75);
+    transform: scale(1.4);
+    z-index: 20;
+    color: white !important;
+    outline: solid 3px #64b5f6;
+  }
+
+  /* Mood colors */
+  .mood-btn[data-mood="very_sad"] { background-color: var(--color-verysad); }
+  .mood-btn[data-mood="sad"] { background-color: var(--color-sad); }
+  .mood-btn[data-mood="anxious"] { background-color: var(--color-anxious); }
+  .mood-btn[data-mood="angry"] { background-color: var(--color-angry); }
+  .mood-btn[data-mood="neutral"] { background-color: var(--color-neutral); }
+  .mood-btn[data-mood="calm"] { background-color: var(--color-calm); }
+  .mood-btn[data-mood="happy"] { background-color: var(--color-happy); color: white;}
+  .mood-btn[data-mood="excited"] { background-color: var(--color-excited); color: #3e2723; }
+  .mood-btn[data-mood="very_happy"] { background-color: var(--color-veryhappy); color: #3e2723; }
+  .mood-btn[data-mood="peace"] { background-color: var(--color-peace); }
+  .mood-btn[data-mood="respect"] { background-color: var(--color-respect); }
+  .mood-btn[data-mood="trust"] { background-color: var(--color-trust); }
+  .mood-btn[data-mood="unity"] { background-color: var(--color-unity); }
+  .mood-btn[data-mood="love"] { background-color: var(--color-love); }
+  .mood-btn[data-mood="pride"] { background-color: var(--color-pride); }
+  .mood-btn[data-mood="rule"] { background-color: var(--color-rule); }
+  .mood-btn[data-mood="usurp"] { background-color: var(--color-usurp); }
+  .mood-btn[data-mood="tempt"] { background-color: var(--color-tempt); color: black;}
+  .mood-btn[data-mood="lust"] { background-color: var(--color-lust); }
+  .mood-btn[data-mood="protect"] { background-color: var(--color-protect); }
+
+  /* Daily Mood Trend Chart */
+  #daily-chart-container {
+    width: 100%;
+    margin-top: 20px;
+    user-select: none;
+  }
+  #daily-chart-title {
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: #0d47a1;
+    letter-spacing: 1.2px;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  #daily-chart-bars {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 7px;
+    height: 120px;
+  }
+  .daily-chart-bar {
+    border-radius: 10px 10px 0 0;
+    cursor: default;
+    transition: filter 0.3s ease;
+    box-shadow: 0 6px 10px rgba(0,0,0,0.12);
+    position: relative;
+    background: var(--chart-bar-bg);
+    filter: brightness(0.6);
+  }
+  .daily-chart-bar.active {
+    filter: brightness(1.2);
+  }
+  .daily-chart-bar span {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #0d47a1;
+    user-select: none;
+    pointer-events: none;
+    white-space: nowrap;
+    text-shadow: 0 0 3px rgba(255, 255, 255 / 0.9);
+  }
+  .hour-labels {
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    font-size: 0.75rem;
+    color: #0d47a1;
+    user-select: none;
+  }
+  .hour-label {
+    text-align: center;
+    user-select: none;
+  }
+
+  /* Right Statistics Section */
+  .stats-section {
+    background: var(--container-bg);
+    padding: 30px 25px;
+    border-radius: 20px;
+    box-shadow: 0 15px 40px var(--shadow-color);
+    font-size: 1rem;
+    color: #0d47a1;
+    min-height: 400px;
+    overflow-y: auto;
+    user-select: none;
+  }
+  .stats-section h2 {
+    margin-top: 0;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    letter-spacing: 1.1px;
+  }
+  .stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .stats-item {
+    background: #eaf6ff;
+    border-radius: 12px;
+    padding: 10px 15px;
+    box-shadow: inset 0 0 8px rgba(32,116,226,0.2);
+  }
+  .stats-item strong {
+    color: #0d47a1;
+  }
+
+  /* Footer buttons */
+  .footer-buttons {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+  }
+  button.clear-btn, button.poster-btn {
+    border: none;
+    background: #0d47a1;
+    color: white;
+    padding: 12px 22px;
+    font-weight: 700;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(21, 101, 192, 0.75);
+    font-size: 1.1rem;
+    user-select: none;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    text-shadow: 0 0 4px rgba(0,0,50,0.6);
+  }
+  button.clear-btn:hover, button.poster-btn:hover {
+    background: #1565c0;
+    transform: scale(1.05);
+    box-shadow: 0 10px 26px rgba(33, 150, 243, 0.85);
+  }
+  button.clear-btn:active, button.poster-btn:active {
+    transform: scale(0.98);
+    box-shadow: none;
+  }
+
+  /* Poster modal */
+  #poster-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.65);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 26px;
+    overflow-y: auto;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  #poster-modal.active {
+    display: flex;
+  }
+  #poster-content {
+    background: white;
+    border-radius: 18px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    padding: 24px 28px;
+    color: #222;
+    box-shadow: 0 14px 48px rgba(21, 101, 192, 0.35);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    overflow-y: auto;
+    position: relative;
+    font-family: 'Poppins', sans-serif;
+    user-select: text;
+  }
+  #poster-title {
+    margin-top: 0;
+    font-weight: 700;
+    color: #0d47a1;
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+  }
+  #poster-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: transparent;
+    border: none;
+    font-size: 1.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: #666;
+    user-select: none;
+    transition: color 0.3s ease;
+  }
+  #poster-close:hover {
+    color: var(--color-happy);
+  }
+
+  /* Scrollbars for sections if needed */
+  .advice-section::-webkit-scrollbar,
+  .stats-section::-webkit-scrollbar {
+    width: 8px;
+  }
+  .advice-section::-webkit-scrollbar-thumb,
+  .stats-section::-webkit-scrollbar-thumb {
+    background: rgba(21, 101, 192, 0.3);
+    border-radius: 8px;
+  }
+
+  /* Responsive */
+  @media (max-width: 1020px) {
+    #dashboard-section {
+      grid-template-columns: 1fr !important;
+      gap: 18px !important;
+    }
+    .advice-section, .mood-center, .stats-section {
+      margin: 0 auto;
+      max-width: 90vw;
+      min-height: auto;
+    }
+    #app {
+      flex-direction: column;
+    }
+    #sidebar {
+      width: 100%;
+      min-width: 100%;
+      flex-direction: row;
+      padding: 10px 15px;
+      overflow-x:auto;
+    }
+    #sidebar h2 {
+      margin: 0 20px 0 0;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #sidebar nav {
+      flex-direction: row;
+      gap: 15px;
+      overflow-x: auto;
+      flex-grow: 1;
+    }
+    #sidebar nav button {
+      padding: 8px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+      font-size: 0.9rem;
+    }
+    #user-info {
+      padding: 10px 0 0;
+      border-top: none;
+      flex-shrink: 0;
+      font-size: 0.8rem;
+      margin-left: 15px;
+      white-space: nowrap;
+    }
+  }
+  @media (max-width: 480px) {
+    #content {
+      padding: 15px 10px;
+    }
+    .mood-btn {
+      width: 50px;
+      height: 50px;
+      font-size: 1.8rem;
+    }
+    button.clear-btn, button.poster-btn {
+      padding: 10px 16px;
+      font-size: 1rem;
+    }
+    #poster-content {
+      max-width: 90vw;
+      padding: 20px 22px;
+      font-size: 0.9rem;
+    }
+    #sidebar {
+      padding: 8px 10px;
+    }
+  }
+</style>
+</head>
+<body>
+  <!-- Login Page -->
+  <div id="login-page" aria-label="Login Page" role="main">
+    <form id="login-form" aria-label="Login Form">
+      <h2>Login</h2>
+      <div id="login-error" role="alert" aria-live="assertive"></div>
+      <label for="email-input">Email</label>
+      <input type="email" id="email-input" autocomplete="username" required placeholder="Enter your email" />
+      <label for="password-input">Password</label>
+      <input type="password" id="password-input" autocomplete="current-password" required placeholder="Enter your password" />
+      <label class="checkbox-label"><input type="checkbox" id="remember-me" /> Remember Me</label>
+      <button type="submit" id="login-btn">Login</button>
+      <div class="links">
+        <a href="#" id="forgot-password">Forgot Password?</a>
+        <a href="#" id="show-signup"> Don't have an account? sign up</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" style="display:none;" role="main" aria-label="Mindfulness Mood Tracker Application">
+    <aside id="sidebar" aria-label="Application sidebar navigation">
+      <h2>Mood Tracker</h2>
+      <nav>
+        <button id="nav-dashboard" aria-pressed="true">Dashboard</button>
+        <button id="nav-mood-history" aria-pressed="false">Mood History</button>
+        <button id="nav-add-mood" aria-pressed="false">Add Mood</button>
+        <button id="nav-journal" aria-pressed="false">Journal</button>
+        <button id="nav-settings" aria-pressed="false">Settings</button>
+        <button id="nav-logout">Log Out</button>
+      </nav>
+      <div id="user-info" aria-live="polite" ></div>
+    </aside>
+
+    <section id="content" tabindex="0">
+      <!-- Dashboard content will be loaded here by JS -->
+    </section>
+  </div>
+
+  <!-- Poster modal (from original code) -->
+  <div id="poster-modal" role="dialog" aria-modal="true" aria-labelledby="poster-title" style="display:none;position: fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);justify-content:center;align-items:center;z-index:9999;padding: 26px;overflow-y:auto;backdrop-filter: blur(4px);-webkit-backdrop-filter: blur(4px);">
+    <div id="poster-content" style="background:white;border-radius:18px;max-width:600px;width:100%;max-height:90vh;padding:24px 28px;color:#222;box-shadow: 0 14px 48px rgba(21, 101, 192, 0.35);font-size: 0.95rem;line-height:1.5;overflow-y:auto;position:relative;font-family: 'Poppins', sans-serif;user-select:text;">
+      <button id="poster-close" aria-label="Close poster" style="position:absolute;top:14px;right:16px;background:transparent;border:none;font-size:1.8rem;font-weight:700;cursor:pointer;color:#666;user-select:none;transition:color 0.3s ease;">&times;</button>
+      <h2 id="poster-title" style="margin-top:0;font-weight:700;color:#0d47a1;font-size:1.3rem;margin-bottom:12px;">Mental Wellness & AI: Enhancing Mindful Living</h2>
+      <p>In today's fast-paced world, mental wellness is paramount. Mindfulness practices have been proven to reduce stress, improve emotional regulation, and promote overall well-being.</p>
+      <p>Artificial Intelligence empowers us by offering personalized mental health support through mood tracking, real-time advice, and insights into emotional trends.</p>
+      <p>This app embodies how AI combined with mindfulness encourages daily self-awareness, helps identify emotional patterns, and provides timely encouragement for a balanced life.</p>
+      <p>Embrace your feelings, cultivate calm, and use technology mindfully for a healthier, happier you.</p>
+      <p style="margin-top: 30px; font-style: italic; text-align: center; font-size: 0.85rem;">&mdash; Mindful Living AI & Mindfulness Community</p>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script>
+    // Replace the below with your actual Firebase config
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDN8ZoDc1jrl_Bq_-CsKtpTUsVSF-sIaMg",
+  authDomain: "mindfulness-mood-tracker-app.firebaseapp.com",
+  projectId: "mindfulness-mood-tracker-app",
+  storageBucket: "mindfulness-mood-tracker-app.firebasestorage.app",
+  messagingSenderId: "106311304482",
+  appId: "1:106311304482:web:52bb5078773a028b70517b",
+  measurementId: "G-MTR3J4B53M"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Cached DOM Elements
+    const loginPage = document.getElementById('login-page');
+    const appContainer = document.getElementById('app');
+    const loginForm = document.getElementById('login-form');
+    const loginError = document.getElementById('login-error');
+
+    const emailInput = document.getElementById('email-input');
+    const passwordInput = document.getElementById('password-input');
+    const rememberMeCheckbox = document.getElementById('remember-me');
+
+    // Sidebar buttons & user info
+    const navButtons = {
+      dashboard: document.getElementById('nav-dashboard'),
+      moodHistory: document.getElementById('nav-mood-history'),
+      addMood: document.getElementById('nav-add-mood'),
+      journal: document.getElementById('nav-journal'),
+      settings: document.getElementById('nav-settings'),
+      logout: document.getElementById('nav-logout')
+    };
+    const userInfoDiv = document.getElementById('user-info');
+    const contentArea = document.getElementById('content');
+
+    // Modal elements
+    const posterModal = document.getElementById('poster-modal');
+    const posterClose = document.getElementById('poster-close');
+
+    // Mood data, colors, emojis, advice as per original code
+    const adviceDataset = {
+      "very_sad": [
+        "It's okay to feel down. Take some deep breaths and know this feeling will pass.",
+        "Try a gentle mindfulness breathing exercise to soothe your mind today.",
+        "Remember: self-compassion is key. Be kind to yourself.",
+        "Reach out to a loved one or journal your feelings."
+      ],
+      "sad": [
+        "Engage in a simple gratitude practice — list three things you appreciate today.",
+        "A short walk outside can uplift your mood.",
+        "Try focusing on your breath for a few minutes to calm your thoughts."
+      ],
+      "anxious": [
+        "Pause and take three slow, deep breaths to calm anxiety.",
+        "Ground yourself by noticing five things you see, four you can touch.",
+        "Try a mindfulness body scan to relax tense muscles."
+      ],
+      "angry": [
+        "Acknowledge the feeling without judgment and breathe deeply.",
+        "Try pacing or light movement to release energy calmly.",
+        "Express your feelings through writing or talking it out."
+      ],
+      "neutral": [
+        "Use this stable feeling to build a positive habit today.",
+        "Brief meditation improves focus and emotional balance.",
+        "Reflect on what you'd like to nurture in your day."
+      ],
+      "calm": [
+        "Savor this peaceful moment and carry it with you.",
+        "Practice mindful breathing to maintain this calmness.",
+        "Consider journaling what helps you stay centered."
+      ],
+      "happy": [
+        "Keep your spirits high by practicing loving-kindness meditation.",
+        "Share your joy with someone today — kindness amplifies happiness.",
+        "Try mindfulness walking and savor the moment."
+      ],
+      "excited": [
+        "Channel your excitement with creative mindfulness like art or music.",
+        "Practice grounding yourself to enjoy the present moment fully.",
+        "Celebrate your energy with gratitude and positivity."
+      ],
+      "very_happy": [
+        "Celebrate your positivity with a mindful gratitude journal entry.",
+        "Use this energy to help others with a kind gesture.",
+        "Practice deep breathing to anchor your joyful state."
+      ],
+      "peace": [
+        "Breathe deeply and allow your mind to rest peacefully.",
+        "Practice mindfulness meditation to nurture inner peace.",
+        "Seek out calm environments to maintain your peace."
+      ],
+      "respect": [
+        "Honor yourself and others with kindness and understanding.",
+        "Practice active listening to build deeper respect relationships.",
+        "Set clear boundaries with compassion."
+      ],
+      "trust": [
+        "Build trust by being honest and open.",
+        "Practice forgiveness for yourself and others.",
+        "Let go of doubt with mindfulness practices."
+      ],
+      "unity": [
+        "Celebrate connection and shared humanity.",
+        "Engage in community-based mindfulness activities.",
+        "Work towards common goals with empathy."
+      ],
+      "love": [
+        "Express gratitude to those you love.",
+        "Practice kindness and compassion daily.",
+        "Allow yourself to receive love freely."
+      ],
+      "pride": [
+        "Celebrate your achievements with humility.",
+        "Take time to reflect on your growth.",
+        "Encourage others on their journeys."
+      ],
+      "rule": [
+        "Lead with integrity and wisdom.",
+        "Practice mindful decision-making.",
+        "Balance power with empathy."
+      ],
+      "usurp": [
+        "Recognize when to step up and claim your space.",
+        "Practice mindful assertiveness.",
+        "Channel energy constructively."
+      ],
+      "tempt": [
+        "Practice self-awareness to recognize temptations.",
+        "Use mindfulness to make conscious choices.",
+        "Seek support when resisting impulses."
+      ],
+      "lust": [
+        "Acknowledge feelings without judgment.",
+        "Practice grounding techniques.",
+        "Redirect energy into creative outlets."
+      ],
+      "protect": [
+        "Guard your wellbeing with compassion.",
+        "Set boundaries mindfully.",
+        "Practice self-care rituals."
+      ]
+    };
+
+    const moodColors = {
+      "very_sad": 'var(--color-verysad)',
+      "sad": 'var(--color-sad)',
+      "anxious": 'var(--color-anxious)',
+      "angry": 'var(--color-angry)',
+      "neutral": 'var(--color-neutral)',
+      "calm": 'var(--color-calm)',
+      "happy": 'var(--color-happy)',
+      "excited": 'var(--color-excited)',
+      "very_happy": 'var(--color-veryhappy)',
+      "peace": 'var(--color-peace)',
+      "respect": 'var(--color-respect)',
+      "trust": 'var(--color-trust)',
+      "unity": 'var(--color-unity)',
+      "love": 'var(--color-love)',
+      "pride": 'var(--color-pride)',
+      "rule": 'var(--color-rule)',
+      "usurp": 'var(--color-usurp)',
+      "tempt": 'var(--color-tempt)',
+      "lust": 'var(--color-lust)',
+      "protect": 'var(--color-protect)'
+    };
+
+    const moodEmojis = {
+      "very_sad": "😢",
+      "sad": "😔",
+      "anxious": "😰",
+      "angry": "😠",
+      "neutral": "😐",
+      "calm": "😌",
+      "happy": "🙂",
+      "excited": "🤩",
+      "very_happy": "😄",
+      "peace": "☮️",
+      "respect": "🤝",
+      "trust": "🤲",
+      "unity": "🕊️",
+      "love": "❤️",
+      "pride": "🌈",
+      "rule": "👑",
+      "usurp": "🛡️",
+      "tempt": "😈",
+      "lust": "🔥",
+      "protect": "🛡️"
+    };
+
+    function getTodayStr() {
+      return new Date().toISOString().slice(0,10);
+    }
+
+    // Load mood history from Firestore and cache locally
+    async function loadMoodHistoryFromFirestore(user) {
+      try {
+        const snapshot = await db.collection('users').doc(user.uid).collection('moods').orderBy('datetime', 'asc').get();
+        const history = [];
+        snapshot.forEach(doc => {
+          let data = doc.data();
+          if(data.datetime && data.datetime.toDate) {
+            data.datetime = data.datetime.toDate().toISOString();
+          }
+          history.push({...data, id: doc.id});
+        });
+        return history;
+      } catch(e) {
+        console.error('Error loading mood history:', e);
+        return [];
+      }
+    }
+
+    async function saveMoodToFirestore(user, mood, note) {
+      try {
+        await db.collection('users').doc(user.uid).collection('moods').add({
+          mood,
+          note,
+          datetime: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch(e) {
+        console.error('Error saving mood:', e);
+        throw e;
+      }
+    }
+
+    // Dashboard content builder and logic
+
+    function buildDashboardHTML() {
+      return `
+        <div id="dashboard-section" aria-label="Dashboard Main Section">
+          <section class="advice-section" aria-live="polite" aria-label="Your Advice">
+            <h2>Your Advice</h2>
+            <div id="advice">Select a mood above to see advice.</div>
+          </section>
+          <section class="mood-center" aria-label="Mood Selection and Daily Trend">
+            <div class="section-title" id="feeling-title">How are you feeling today?</div>
+            <div class="mood-buttons" role="radiogroup" aria-label="Mood selection">
+              ${Object.keys(moodEmojis).map(moodKey =>
+                `<button type="button" class="mood-btn" title="${moodKey.replace('_',' ').toUpperCase()}" data-mood="${moodKey}" aria-checked="false" role="radio" aria-label="${moodKey.replace('_',' ')}">${moodEmojis[moodKey]}</button>`
+              ).join('')}
+            </div>
+            <div id="daily-chart-container" aria-label="Daily Mood Trend Chart">
+              <div id="daily-chart-title">Today's Mood Frequency (4-hourly)</div>
+              <div id="daily-chart-bars" role="list" aria-live="polite" aria-label="Mood frequency bars for each 4-hour period"></div>
+              <div class="hour-labels" aria-hidden="true">
+                <div class="hour-label">12 AM</div>
+                <div class="hour-label">4 AM</div>
+                <div class="hour-label">8 AM</div>
+                <div class="hour-label">12 PM</div>
+                <div class="hour-label">4 PM</div>
+                <div class="hour-label">8 PM</div>
+              </div>
+            </div>
+            <div class="footer-buttons" style="margin-top: 30px;">
+              <button class="clear-btn" id="clear-data">Clear History</button>
+              <button class="poster-btn" id="show-poster">Mental Wellness + AI</button>
+            </div>
+          </section>
+          <section class="stats-section" aria-label="Mood Statistics">
+            <h2>Statistics</h2>
+            <div id="stats-content">
+              <p>No data yet. Log your moods to see statistics here.</p>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    // Update advice text based on mood selection
+    function showAdvice(mood) {
+      const adviceEl = document.getElementById('advice');
+      if(!mood || !adviceDataset[mood]) {
+        adviceEl.textContent = 'Select a mood above to see advice.';
+        return;
+      }
+      const advices = adviceDataset[mood];
+      adviceEl.textContent = advices[Math.floor(Math.random()*advices.length)];
+    }
+
+    function updateMoodSelectionUI(lastMood) {
+      const moodButtons = document.querySelectorAll('.mood-btn');
+      moodButtons.forEach(btn => {
+        if(btn.dataset.mood === lastMood) {
+          btn.classList.add('selected');
+          btn.setAttribute('aria-checked', 'true');
+        } else {
+          btn.classList.remove('selected');
+          btn.setAttribute('aria-checked', 'false');
+        }
+      });
+    }
+
+    // Daily mood chart update
+    function updateDailyChart(history) {
+      const dailyChartBars = document.getElementById('daily-chart-bars');
+      const today = getTodayStr();
+
+      // Aggregate moods count for 6 segments (4 hours each)
+      const segmentCounts = Array(6).fill(null).map(() => ({}));
+
+      history.forEach(entry => {
+        if(entry.datetime.startsWith(today)) {
+          const hour = new Date(entry.datetime).getHours();
+          const segmentIndex = Math.floor(hour / 4);
+          const mood = entry.mood;
+          const counts = segmentCounts[segmentIndex];
+          counts[mood] = (counts[mood] || 0) + 1;
+        }
+      });
+
+      dailyChartBars.innerHTML = '';
+      for(let i=0; i<6; i++) {
+        const moodsCount = segmentCounts[i];
+        let topMood = null;
+        let topCount = 0;
+        for(const mood in moodsCount) {
+          if(moodsCount[mood] > topCount) {
+            topCount = moodsCount[mood];
+            topMood = mood;
+          }
+        }
+        const bar = document.createElement('div');
+        bar.className = 'daily-chart-bar';
+        bar.setAttribute('role', 'listitem');
+        bar.setAttribute('tabindex', '0');
+        const segmentStartHour = i * 4;
+        const periodLabel = segmentStartHour === 0 ? '12 AM' : (segmentStartHour < 12 ? segmentStartHour + ' AM' : (segmentStartHour === 12 ? '12 PM' : (segmentStartHour - 12) + ' PM'));
+        if(topMood) {
+          bar.classList.add('active');
+          bar.style.backgroundColor = moodColors[topMood];
+          bar.title = `${moodEmojis[topMood]} ${topMood.replace('_', ' ')} - ${topCount} time${topCount > 1 ? 's' : ''} at ${periodLabel}`;
+          const label = document.createElement('span');
+          label.textContent = periodLabel;
+          bar.appendChild(label);
+        } else {
+          bar.style.backgroundColor = 'rgba(200,200,200,0.2)';
+          bar.title = `No moods recorded at ${periodLabel}`;
+          const label = document.createElement('span');
+          label.textContent = periodLabel;
+          bar.appendChild(label);
+        }
+        dailyChartBars.appendChild(bar);
+      }
+    }
+
+    // Update statistics
+    function updateStatistics(history) {
+      const statsContent = document.getElementById('stats-content');
+      if(history.length === 0) {
+        statsContent.innerHTML = '<p>No data yet. Log your moods to see statistics here.</p>';
+        return;
+      }
+      const moodCounts = {};
+      history.forEach(e => {
+        moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1;
+      });
+      const total = history.length;
+      const sorted = Object.entries(moodCounts).sort((a,b) => b[1] - a[1]);
+      let statsHTML = `<p><strong>Total mood entries:</strong> ${total}</p>`;
+      statsHTML += '<div class="stats-list">';
+      for(const [mood,count] of sorted) {
+        const percent = ((count/total)*100).toFixed(1);
+        const color = moodColors[mood] || '#333';
+        const emoji = moodEmojis[mood] || '';
+        statsHTML += `<div class="stats-item" style="border-left: 8px solid ${color};">
+          <strong>${emoji} ${mood.replace('_',' ')}</strong>: ${count} time${count > 1 ? 's' : ''} (${percent}%)</div>`;
+      }
+      statsHTML += '</div>';
+      statsContent.innerHTML = statsHTML;
+    }
+
+    // Clear mood history (firestore)
+    async function clearMoodHistory(user) {
+      try {
+        const moodsCollection = db.collection('users').doc(user.uid).collection('moods');
+        const snapshot = await moodsCollection.get();
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      } catch(e) {
+        console.error('Error clearing mood history:', e);
+        throw e;
+      }
+    }
+
+    // Main Dashboard init after login
+    async function initDashboard(user) {
+      contentArea.innerHTML = buildDashboardHTML();
+
+      // Now bind mood buttons event listeners
+      const moodButtons = document.querySelectorAll('.mood-btn');
+      const adviceEl = document.getElementById('advice');
+      const clearBtn = document.getElementById('clear-data');
+      const posterBtn = document.querySelector('.poster-btn');
+      const dailyChartBars = document.getElementById('daily-chart-bars');
+      const statsContent = document.getElementById('stats-content');
+      const posterModal = document.getElementById('poster-modal');
+      const posterClose = document.getElementById('poster-close');
+
+      let moodHistory = await loadMoodHistoryFromFirestore(user);
+
+      // Helper to get last mood today or last overall
+      function getLastMood(history) {
+        let lastMood = null;
+        if(history.length) {
+          const today = getTodayStr();
+          for(let i=history.length-1; i>=0; i--) {
+            if(history[i].datetime.startsWith(today)) {
+              lastMood = history[i].mood;
+              break;
+            }
+          }
+          if(!lastMood) lastMood = history[history.length-1].mood;
+        }
+        return lastMood;  
+      }
+
+      function updateUI() {
+        const lastMood = getLastMood(moodHistory);
+        updateMoodSelectionUI(lastMood);
+        showAdvice(lastMood);
+        updateDailyChart(moodHistory);
+        updateStatistics(moodHistory);
+      }
+
+      // Mood button click handler
+      async function onMoodClick(mood) {
+        const note = ''; // no note input in dashboard button UI
+        try {
+          await saveMoodToFirestore(user, mood, note);
+          moodHistory = await loadMoodHistoryFromFirestore(user);
+          updateUI();
+        } catch(e) {
+          alert('Error saving mood: '+e.message);
+        }
+      }
+
+      moodButtons.forEach(btn => {
+        btn.addEventListener('click', e => {
+          const mood = btn.dataset.mood;
+          onMoodClick(mood);
+        });
+        btn.addEventListener('keydown', e => {
+          if(e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            btn.click();
+          }
+        });
+      });
+
+      clearBtn.addEventListener('click', async () => {
+        if(confirm('Clear all mood history? This action cannot be undone.')) {
+          try {
+            await clearMoodHistory(user);
+            moodHistory = [];
+            updateUI();
+          } catch(e) {
+            alert('Error clearing mood history: '+e.message);
+          }
+        }
+      });
+
+      posterBtn.addEventListener('click', () => {
+        posterModal.style.display = 'flex';
+        posterClose.focus();
+      });
+      posterClose.addEventListener('click', () => {
+        posterModal.style.display = 'none';
+        posterBtn.focus();
+      });
+      posterModal.addEventListener('click', e => {
+        if(e.target === posterModal) {
+          posterModal.style.display = 'none';
+          posterBtn.focus();
+        }
+      });
+
+      document.addEventListener('keydown', e => {
+        if(e.key === 'Escape' && posterModal.style.display === 'flex') {
+          posterModal.style.display = 'none';
+          posterBtn.focus();
+        }
+      });
+
+      updateUI();
+    }
+
+    // Other app views: Mood history, Add mood, Journal, Settings (simplified)
+
+    async function showMoodHistory(user) {
+      selectNav('moodHistory');
+      clearContent();
+      contentArea.innerHTML = '<h1>Mood History</h1><p>Loading mood history...</p>';
+      try {
+        const snapshot = await db.collection('users').doc(user.uid).collection('moods').orderBy('datetime', 'desc').get();
+        if(snapshot.empty) {
+          contentArea.innerHTML = '<h1>Mood History</h1><p>No recorded moods yet.</p>';
+          contentArea.focus();
+          return;
+        }
+        let html = `<h1>Mood History</h1><table class="history-table" aria-label="Mood History Table">
+          <thead><tr><th>Date/Time</th><th>Mood</th><th>Note</th></tr></thead><tbody>`;
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const dt = data.datetime?.toDate ? data.datetime.toDate() : new Date();
+          const niceDate = dt.toLocaleString();
+          const mood = data.mood;
+          const note = data.note || '';
+          html += `<tr><td>${niceDate}</td><td>${mood}</td><td>${note}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        contentArea.innerHTML = html;
+        contentArea.focus();
+      } catch(e) {
+        contentArea.innerHTML = '<h1>Mood History</h1><p>Error loading moods.</p>';
+      }
+    }
+
+    function showAddMood(user) {
+      selectNav('addMood');
+      clearContent();
+      contentArea.innerHTML = `
+        <h1>Add Mood</h1>
+        <form id="mood-add-form" aria-label="Add Mood Form">
+          <label for="mood-select">Mood</label>
+          <select name="mood" id="mood-select" required>
+            <option value="" disabled selected>Select your mood</option>
+            ${Object.entries(moodEmojis).map(([moodKey, emoji]) =>
+              `<option value="${moodKey}">${moodKey.replace('_',' ')} ${emoji}</option>`
+            ).join('')}
+          </select>
+          <label for="note-textarea">Note (optional)</label>
+          <textarea id="note-textarea" rows="4" placeholder="Write something about your mood..."></textarea>
+          <button type="submit">Save Mood</button>
+        </form>`;
+      contentArea.focus();
+
+      const form = document.getElementById('mood-add-form');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const mood = form.mood.value;
+        const note = form['note-textarea'].value.trim();
+        if(!mood) {
+          alert('Please select a mood.');
+          return;
+        }
+        try {
+          await saveMoodToFirestore(user, mood, note);
+          alert('Mood saved successfully!');
+          form.reset();
+        } catch(err) {
+          alert('Error saving mood: ' + err.message);
+        }
+      });
+    }
+
+    async function showJournal(user) {
+      selectNav('journal');
+      clearContent();
+      contentArea.innerHTML = `
+      <h1>Journal</h1>
+      <textarea id="journal-notes" placeholder="Write your journal notes here..." aria-label="Journal Notes"></textarea>
+      <button id="save-journal-btn" style="margin-top:12px;padding:10px 18px;font-weight:700;background:#1565c0;color:#fff;border:none;border-radius:20px;cursor:pointer;">Save Notes</button>
+      <p id="journal-saved-msg" style="color:green;display:none;margin-top:10px;">Notes saved.</p>
+      `;
+      contentArea.focus();
+      const notesArea = document.getElementById('journal-notes');
+      const saveBtn = document.getElementById('save-journal-btn');
+      const savedMsg = document.getElementById('journal-saved-msg');
+
+      try {
+        const docRef = db.collection('users').doc(user.uid).collection('journal').doc('notes');
+        const docSnap = await docRef.get();
+        if(docSnap.exists) {
+          notesArea.value = docSnap.data().content;
+        } else {
+          notesArea.value = '';
+        }
+      } catch(e) {
+        console.error('Error loading journal:', e);
+        notesArea.value = '';
+      }
+
+      saveBtn.addEventListener('click', async () => {
+        try {
+          await db.collection('users').doc(user.uid).collection('journal').doc('notes').set({
+            content: notesArea.value,
+            updated_at: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          savedMsg.style.display = 'block';
+          setTimeout(() => savedMsg.style.display = 'none', 3000);
+        } catch(e) {
+          alert('Error saving notes: ' + e.message);
+        }
+      });
+    }
+
+    function showSettings() {
+      selectNav('settings');
+      clearContent();
+      const theme = localStorage.getItem('theme') || 'light';
+      contentArea.innerHTML = `
+      <h1>Settings</h1>
+      <div id="settings-section">
+        <label for="theme-select">Choose Theme</label>
+        <select id="theme-select" aria-label="Select Theme">
+          <option value="light" ${theme==='light' ? 'selected' : ''}>Light</option>
+          <option value="dark" ${theme==='dark' ? 'selected' : ''}>Dark</option>
+        </select>
+      </div>`;
+      contentArea.focus();
+
+      const themeSelect = document.getElementById('theme-select');
+      themeSelect.addEventListener('change', (e) => {
+        applyTheme(e.target.value);
+      });
+    }
+
+    function applyTheme(theme) {
+      if(theme === 'dark') {
+        document.body.classList.add('dark');
+      } else {
+        document.body.classList.remove('dark');
+      }
+      localStorage.setItem('theme', theme);
+    }
+
+    // Utility functions for showing/hiding pages
+    function showElement(el) { el.style.display = ''; }
+    function hideElement(el) { el.style.display = 'none'; }
+
+    function showPage(page) {
+      if(page === 'login') {
+        showElement(loginPage);
+        hideElement(appContainer);
+      } else if(page === 'app') {
+        showElement(appContainer);
+        hideElement(loginPage);
+      }
+    }
+
+    function clearContent() {
+      contentArea.innerHTML = '';
+    }
+
+    function selectNav(buttonKey) {
+      Object.entries(navButtons).forEach(([key, btn]) => {
+        const selected = (key === buttonKey);
+        btn.classList.toggle('selected', selected);
+        btn.setAttribute('aria-pressed', selected.toString());
+      });
+    }
+
+    function updateUserInfo(user) {
+      userInfoDiv.textContent = user ? `Signed in as ${user.email}` : '';
+    }
+
+    // Login form submit handler
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      loginError.textContent = '';
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      const remember = rememberMeCheckbox.checked;
+
+      auth.setPersistence(remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION)
+      .then(() => {
+        return auth.signInWithEmailAndPassword(email, password);
+      })
+      .catch(error => {
+        loginError.textContent = error.message;
+      });
+    });
+
+    // Auth state observer
+    auth.onAuthStateChanged(async (user) => {
+      if(user) {
+        applyTheme(localStorage.getItem('theme') || 'light');
+        updateUserInfo(user);
+        showPage('app');
+        setupNav(user);
+        // Default to dashboard on login
+        await initDashboard(user);
+      } else {
+        updateUserInfo(null);
+        showPage('login');
+      }
+    });
+
+    // Setup nav handlers
+    function setupNav(user) {
+      navButtons.dashboard.onclick = async () => {
+        await initDashboard(user);
+      };
+      navButtons.moodHistory.onclick = async () => {
+        await showMoodHistory(user);
+      };
+      navButtons.addMood.onclick = () => {
+        showAddMood(user);
+      };
+      navButtons.journal.onclick = async () => {
+        await showJournal(user);
+      };
+      navButtons.settings.onclick = () => {
+        showSettings();
+      };
+      navButtons.logout.onclick = () => {
+        auth.signOut();
+      };
+    }
+  </script>
+</body>
+</html>
